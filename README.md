@@ -1,6 +1,6 @@
 # MethyAgent: literature agent and evaluation tools
 
-> This branch (`literature-agent`) holds Emma Wang's internship work at Genetron, June to August 2026, with follow-up measurements in November 2026. It is a fork of [bochaozhang/methylation_data_agent](https://github.com/bochaozhang/methylation_data_agent). Mentor: Bochao Zhang. The project's original README, in Chinese, follows this section.
+> This branch (`literature-agent`) holds Emma Wang's internship work at Z.ai and Genetron Lab, June to August 2026, with follow-up measurements in November 2026. It is a fork of [bochaozhang/methylation_data_agent](https://github.com/bochaozhang/methylation_data_agent). Mentor: Bochao Zhang. The project's original README, in Chinese, follows this section.
 
 MethyAgent is a multi-agent system for early cancer screening research on blood cfDNA methylation. One agent finds public datasets and another mines the literature. I owned the literature agent.
 
