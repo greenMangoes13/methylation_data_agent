@@ -1,3 +1,60 @@
+# MethyAgent: literature agent and evaluation tools
+
+> This branch (`literature-agent`) holds Emma Wang's internship work at Genetron, June to August 2026, with follow-up measurements in November 2026. It is a fork of [bochaozhang/methylation_data_agent](https://github.com/bochaozhang/methylation_data_agent). Mentor: Bochao Zhang. The project's original README, in Chinese, follows this section.
+
+MethyAgent is a multi-agent system for early cancer screening research on blood cfDNA methylation. One agent finds public datasets and another mines the literature. I owned the literature agent.
+
+A researcher types a question such as "colorectal cancer, plasma cfDNA methylation, with healthy controls". The agent searches PubMed, reads the papers, and fills in a table: cancer type, sample type, AUC, cohort size, markers, and dataset IDs.
+
+## What I built
+
+- **Search and extraction.** A query clarifier that asks follow-up questions and keeps PubMed queries short enough to be accepted. Extraction runs in two stages: a keyword filter drops about 70% of papers before any model call, and only the survivors go to the LLM.
+- **A tool-using orchestrator with hard limits.** The model chooses its own steps. It repeated the same search about a dozen times, and prompt instructions did not stop it. Limits in code did: searches fell from 12 to 2, model calls from 72 to 13, and run time from over 10 minutes to about 65 seconds.
+- **A grounding check that needs no labels.** Plain code tests whether each extracted value appears in the text the extractor was shown. No model does the grading.
+- **A checklist reviewer.** Seven narrow yes/no checks, each backed by a quote from the paper, replace a single overall verdict.
+- **A planted-error test for reviewers.** Known errors are inserted into real extractions to measure what each reviewer catches and whether it names the right problem.
+
+## Results (November 2026)
+
+Three search queries, top 15 results each: 45 records from 39 unique papers.
+
+| Measure | Result |
+|---|---|
+| Extracted values that appear in the source text | 85.8% (169 of 197) |
+| Same, for cohort sizes | 50% |
+| Original reviewer: unsupported values caught | 0 of 27 (it changed 1 of 173 values) |
+| Planted errors where the reviewer named the right problem | Checklist 40 of 40, original 12 of 40 |
+| Real unstated cohort sizes flagged, in 10 untouched papers | Checklist 3 of 4, original 0 of 4 |
+| Time per record | Checklist 31 s, original 13 s |
+
+Details and the per-error table are in [`scripts/grounding_eval/README.md`](scripts/grounding_eval/README.md).
+
+## Limits
+
+- "Appears in the source text" is not the same as correct. The check cannot see what the extractor missed.
+- The sample is three queries on two cancer types. There is no hand-verified answer key yet.
+- The checklist reviewer raised one false alarm in ten clean papers and is about twice as slow.
+- No planted cohort-size error exists yet, although that is the most common real failure.
+- Nothing in the main pipeline calls the checklist reviewer yet.
+
+## Where to look
+
+| Path | What it is |
+|---|---|
+| `tools/query_clarifier.py` | Query parsing, follow-up questions, synonym expansion |
+| `agents/orchestrator_v2.py` | Tool-using literature orchestrator with search and tool-call budgets |
+| `tools/extraction_reviewer.py` | Original single-verdict LLM reviewer |
+| `tools/checklist_reviewer.py` | Seven-check reviewer with quoted evidence |
+| `scripts/eval_grounding.py` | Label-free grounding check |
+| `scripts/eval_consistency.py` | Run-to-run stability and cost per run |
+| `scripts/eval_reviewer.py` | Planted-error test for reviewers |
+| `scripts/build_gold_standard.py` | Builder for a multi-annotator answer key |
+| `scripts/grounding_eval/` | Wrappers, paired before/after analysis, and results |
+
+The dataset agent, download pipeline, and web interface in this repository are Bochao Zhang's work.
+
+---
+
 # MethyAgent
 
 基于 LangGraph 的双 Agent 甲基化数据自动采集系统。
