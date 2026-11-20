@@ -2,13 +2,14 @@
 
 > This branch (`literature-agent`) holds Emma Wang's internship work at Z.ai and Genetron Lab, June to August 2026, with follow-up measurements in November 2026. It is a fork of [bochaozhang/methylation_data_agent](https://github.com/bochaozhang/methylation_data_agent). Mentor: Bochao Zhang. The project's original README, in Chinese, follows this section.
 
-MethyAgent is a multi-agent system for early cancer screening research on blood cfDNA methylation. One agent finds public datasets and another mines the literature. I owned the literature agent.
+MethyAgent is a multi-agent system for early cancer screening research on blood cfDNA methylation. One agent finds public datasets and another mines the literature. The project already had a first literature agent from my mentor. I built a second search and extraction path next to it, and the tools to measure how far its output can be trusted.
 
 A researcher types a question such as "colorectal cancer, plasma cfDNA methylation, with healthy controls". The agent searches PubMed, reads the papers, and fills in a table: cancer type, sample type, AUC, cohort size, markers, and dataset IDs.
 
 ## What I built
 
-- **Search and extraction.** A query clarifier that asks follow-up questions and keeps PubMed queries short enough to be accepted. Extraction runs in two stages: a keyword filter drops about 70% of papers before any model call, and only the survivors go to the LLM.
+- **Search and extraction.** A query clarifier that asks follow-up questions, adds cancer synonyms, and keeps PubMed queries short enough to be accepted. It sits on top of the project's rule-based query parser, which is Bochao's. A keyword filter then drops off-topic papers with no model call, a cap limits how many papers go to the LLM, and the LLM fills a fixed schema. Code rules overrule the model where a rule is possible.
+- **What the filter did.** On the three test questions, 117 papers were fetched, 84 passed the filter, and the cap sent 45 to the model. The filter dropped 3 of 36 and 5 of 39 papers on the two blood questions, and 25 of 42 on the tissue question. So the cap controlled cost, not the filter.
 - **A tool-using orchestrator with hard limits.** The model chooses its own steps. It repeated the same search about a dozen times, and prompt instructions did not stop it. Limits in code did: searches fell from 12 to 2, model calls from 72 to 13, and run time from over 10 minutes to about 65 seconds.
 - **A grounding check that needs no labels.** Plain code tests whether each extracted value appears in the text the extractor was shown. No model does the grading.
 - **A checklist reviewer.** Seven narrow yes/no checks, each backed by a quote from the paper, replace a single overall verdict.
@@ -21,9 +22,10 @@ Three search queries, top 15 results each: 45 records from 39 unique papers.
 | Measure | Result |
 |---|---|
 | Extracted values that appear in the source text | 85.8% (169 of 197) |
-| Same, for cohort sizes | 50% |
-| Original reviewer: unsupported values caught | 0 of 27 (it changed 1 of 173 values) |
+| Same, for cohort sizes | 50% (23 of 46) |
+| Original reviewer: unsupported values removed | 0 of 27 (it changed 1 of 173 values). 23 of the 27 were cohort sizes, which it was not asked to check. |
 | Planted errors where the reviewer named the right problem | Checklist 40 of 40, original 12 of 40 |
+| Planted AUC errors removed from the output | Checklist 20 of 20, original 20 of 20 |
 | Real unstated cohort sizes flagged, in 10 untouched papers | Checklist 3 of 4, original 0 of 4 |
 | Time per record | Checklist 31 s, original 13 s |
 
@@ -33,7 +35,10 @@ Details and the per-error table are in [`scripts/grounding_eval/README.md`](scri
 
 - "Appears in the source text" is not the same as correct. The check cannot see what the extractor missed.
 - The sample is three queries on two cancer types. There is no hand-verified answer key yet.
-- The checklist reviewer raised one false alarm in ten clean papers and is about twice as slow.
+- I planted the test errors myself, and the checklist covers the same four error types. So 40 of 40 is a best case.
+- The keyword filter always requires a blood keyword, even when the question is about tissue.
+- The literature path is a prototype. It was not part of the deployed service.
+- The checklist reviewer deleted real AUC values in one of ten clean papers and is about twice as slow.
 - No planted cohort-size error exists yet, although that is the most common real failure.
 - Nothing in the main pipeline calls the checklist reviewer yet.
 
@@ -41,7 +46,7 @@ Details and the per-error table are in [`scripts/grounding_eval/README.md`](scri
 
 | Path | What it is |
 |---|---|
-| `tools/query_clarifier.py` | Query parsing, follow-up questions, synonym expansion |
+| `tools/query_clarifier.py` | Follow-up questions, synonym expansion, and PubMed query building, on top of `tools/parser_tools.py` |
 | `agents/orchestrator_v2.py` | Tool-using literature orchestrator with search and tool-call budgets |
 | `tools/extraction_reviewer.py` | Original single-verdict LLM reviewer |
 | `tools/checklist_reviewer.py` | Seven-check reviewer with quoted evidence |
@@ -51,7 +56,7 @@ Details and the per-error table are in [`scripts/grounding_eval/README.md`](scri
 | `scripts/build_gold_standard.py` | Builder for a multi-annotator answer key |
 | `scripts/grounding_eval/` | Wrappers, paired before/after analysis, and results |
 
-The dataset agent, download pipeline, and web interface in this repository are Bochao Zhang's work.
+The dataset agent, download pipeline, web service, deployment setup, results database, rule-based query parser, and first literature agent in this repository are Bochao Zhang's work.
 
 ---
 
