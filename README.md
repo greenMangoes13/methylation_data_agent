@@ -58,6 +58,48 @@ Details and the per-error table are in [`scripts/grounding_eval/README.md`](scri
 
 The dataset agent, download pipeline, web service, deployment setup, results database, rule-based query parser, and first literature agent in this repository are Bochao Zhang's work.
 
+## How to run
+
+The install and the no-key test were checked on a fresh clone with Python 3.14 in November 2026. The steps after that need your own keys.
+
+**1. Install.** The evaluation wrappers expect the environment at `.venv`, which is ignored by git.
+
+```bash
+git clone https://github.com/greenMangoes13/methylation_data_agent.git
+cd methylation_data_agent
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
+
+**2. Check the agent loop with no API key.** A scripted stand-in model drives the three tools against a temporary database. The second half sends 30 reworded search requests and checks that only 2 run.
+
+```bash
+.venv/bin/python tests/test_orchestrator_v2.py
+```
+
+**3. Run the tool-using orchestrator on a real question.** This needs a ZhipuAI key. `main.py` reads keys from the shell environment, not from a `.env` file.
+
+```bash
+export ZHIPU_API_KEY=your_key
+export ZHIPU_MODEL=glm-5.2
+ORCHESTRATOR_VERSION=v2 .venv/bin/python main.py --query "colorectal cancer plasma cfDNA methylation healthy controls" --agent lit-only
+```
+
+- Without `ORCHESTRATOR_VERSION=v2`, the original fixed pipeline runs.
+- `NCBI_API_KEY` is optional. It raises the PubMed rate limit.
+- The search and tool-call limits are `max_searches` and `max_tool_calls` in `config/settings.yaml`.
+- `config/settings.yaml` also lists OpenAI-compatible, Anthropic, and DeepSeek backends. My measurements used GLM only.
+
+**4. Run the evaluations.** These wrappers load keys from `.env` in the repository root. Each one makes real model and PubMed calls.
+
+```bash
+cp .env.example .env
+scripts/grounding_eval/run_paired.sh
+scripts/grounding_eval/run_reviewer_eval.sh --n-per-type 10
+```
+
+Fill in `.env` before running the two scripts. What each script does and where its output goes is in [`scripts/grounding_eval/README.md`](scripts/grounding_eval/README.md).
+
 ---
 
 # MethyAgent
